@@ -157,10 +157,22 @@ init_huff_tables()
 void
 set_bits(BITS *bits, INT16 data)
 {
-    /******************************************************/
-    /*                                                    */
-    /*             finish the missing codes               */
-    /*                                                    */
+    /*************finish the missing codes****************/
+    //对特定值求它的绝对值的位长度，同时如果原值为负值(−2^𝑥, −2^(x-1)]
+    //将其加上2^𝑥，映射到[0, 2^(𝑥−1))
+    UINT16 pos_data;
+    int i;
+    //获取数据的原码
+    pos_data = data < 0 ? ~data + 1 : data;
+    //找到数据是从高到低从第几个bit开始，第一次在某个bit出现值为1
+    //也就是找到数据的最高位是第几位，获得数据的长度
+    for (i = 15; i >= 0; i--)
+        if ((pos_data & (1 << i)) != 0)
+            break;
+    //数据的长度就是i+1
+    bits->len = i + 1;
+    //x===i+1, (1 << bits->len)===2^𝑥，故满足要求
+    bits->val = data < 0 ? data + (1 << bits->len) - 1 : data;
     /******************************************************/
 }
 
@@ -253,7 +265,9 @@ jpeg_encode(compress_io *cio, bmp_info *binfo)
             dc_cb = 0,
             dc_cr = 0;
     int x, y;
-
+    //Normally pixels are stored "upside-down" with respect to normal image 
+    //raster scan order, starting in the lower left corner, going from left
+    // to right, and then row by row from the bottom to the top of the image
     //通常来说bmp图像的存储都是倒过来的，因此我们需要将起始位置与结束位置调换
 #ifdef REVERSED
     int in_size = in->end - in->set;
