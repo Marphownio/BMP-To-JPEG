@@ -42,7 +42,11 @@ rgb_to_ycbcr(UINT8 *rgb_unit, ycbcr_unit *ycc_unit, int x, int w)
     //x：该DCTunit的横坐标  w:该图像的最大宽度（以免越界）
     ycbcr_tables *tbl = &ycc_tables;
     UINT8 r, g, b;
-    int src_pos = x * 3;//一个像素点中存储了RGB三个颜色分量，所以乘3
+    #ifdef REVERSED
+        int src_pos = (x + w * (DCTSIZE - 1)) * 3;//从最后一行的最左边开始
+    #else
+        int src_pos = x * 3;//一个像素点中存储了RGB三个颜色分量，所以乘3
+    #endif
     int dst_pos = 0;
     int i, j;
     for (j = 0; j < DCTSIZE; j++) {
@@ -59,7 +63,12 @@ rgb_to_ycbcr(UINT8 *rgb_unit, ycbcr_unit *ycc_unit, int x, int w)
             src_pos += 3;
             dst_pos++;
         }
-        src_pos += (w - DCTSIZE) * 3;//进入该unit的下一行进行转化（二维转一维）
+        #ifdef REVERSED
+            src_pos -= (w + DCTSIZE) * 3;//进入该unit的下(上)一行的最左边进行转化（二维转一维）
+        #else
+            src_pos += (w - DCTSIZE) * 3;
+        #endif
+        //src_pos += (w - DCTSIZE) * 3;
     }
 }
 
@@ -246,9 +255,12 @@ jpeg_encode(compress_io *cio, bmp_info *binfo)
     int x, y;
 
     //通常来说bmp图像的存储都是倒过来的，因此我们需要将起始位置与结束位置调换
+#ifdef REVERSED
     int in_size = in->end - in->set;
     int offset = binfo->offset + (binfo->datasize/in_size - 1) * in_size;
-    //int offset = binfo->offset;
+#else
+    int offset = binfo->offset;
+#endif
 
 
     fseek(in->fp, offset, SEEK_SET);

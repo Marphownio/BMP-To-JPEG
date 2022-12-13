@@ -21,7 +21,10 @@ flush_cin_buffer(void *cio)
     memset(in->set, 0, len);
     if (fread(in->set, sizeof(UINT8), len, in->fp) != len)
         return false;
-    in->pos = in->set;
+    #ifdef REVERSED
+        fseek(in->fp, -len * 2, SEEK_CUR);
+    #endif
+        in->pos = in->set;
     return true;
 }
 
