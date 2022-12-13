@@ -178,7 +178,7 @@ static UINT8 STD_CH_QTABLE[DCTSIZE2] = {       /* chrominance */
     99,  99,  99,  99,  99,  99,  99,  99
 };
 
-static double AAN_SCALE_FACTOR[DCTSIZE] = {
+static double AAN_SCALE_FACTOR[DCTSIZE] = {//缩放因子，对不同大小的DCTunit不同
     1.0,
     1.387039845,
     1.306562965,
@@ -192,8 +192,8 @@ static double AAN_SCALE_FACTOR[DCTSIZE] = {
 /* store scaled quantization tables */
 
 typedef struct {
-    UINT8 lu[DCTSIZE2];
-    UINT8 ch[DCTSIZE2];
+    UINT8 lu[DCTSIZE2];          //y分量的量化表
+    UINT8 ch[DCTSIZE2];          //crcb分量的量化表
 } quant_tables;
 
 extern quant_tables q_tables;
@@ -201,9 +201,9 @@ extern quant_tables q_tables;
 /* store color unit after quantizing operation */
 
 typedef struct {
-    INT16 y[DCTSIZE2];
-    INT16 cb[DCTSIZE2];
-    INT16 cr[DCTSIZE2];
+    INT16 y[DCTSIZE2];          //y分量的量化值
+    INT16 cb[DCTSIZE2];         //cb分量的量化值
+    INT16 cr[DCTSIZE2];         //cr分量的量化值
 } quant_unit;
 
 

@@ -9,7 +9,7 @@
 typedef bool (*CIO_METHOD) (void *);
 
 typedef struct {
-    UINT8 *set;
+    UINT8 *set; //可能是数据？
     UINT8 *pos;
     UINT8 *end;
     CIO_METHOD flush_buffer;

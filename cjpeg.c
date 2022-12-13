@@ -16,11 +16,13 @@
 
 ycbcr_tables ycc_tables;
 
+
+//初始化ycrcb表，以便于将rgb色彩空间转化为ycrcb色彩空间
 void
 init_ycbcr_tables()
 {
     UINT16 i;
-    for (i = 0; i < 256; i++) {
+    for (i = 0; i < 256; i++) {//8位深的色彩，i.e.0~255
         ycc_tables.r2y[i]  = (INT32)(65536 *  0.299   + 0.5) * i;
         ycc_tables.r2cb[i] = (INT32)(65536 * -0.16874 + 0.5) * i;
         ycc_tables.r2cr[i] = (INT32)(32768) * i;
@@ -33,12 +35,14 @@ init_ycbcr_tables()
     }
 }
 
+//对每一个DCT单元（8X8），进行rgb到ycrcb的色彩转化
 void
 rgb_to_ycbcr(UINT8 *rgb_unit, ycbcr_unit *ycc_unit, int x, int w)
 {
+    //x：该DCTunit的横坐标  w:该图像的最大宽度（以免越界）
     ycbcr_tables *tbl = &ycc_tables;
     UINT8 r, g, b;
-    int src_pos = x * 3;
+    int src_pos = x * 3;//一个像素点中存储了RGB三个颜色分量，所以乘3
     int dst_pos = 0;
     int i, j;
     for (j = 0; j < DCTSIZE; j++) {
@@ -55,7 +59,7 @@ rgb_to_ycbcr(UINT8 *rgb_unit, ycbcr_unit *ycc_unit, int x, int w)
             src_pos += 3;
             dst_pos++;
         }
-        src_pos += (w - DCTSIZE) * 3;
+        src_pos += (w - DCTSIZE) * 3;//进入该unit的下一行进行转化（二维转一维）
     }
 }
 
@@ -96,13 +100,13 @@ jpeg_quant(ycbcr_unit *ycc_unit, quant_unit *q_unit)
     for (x = 0; x < DCTSIZE; x++) {
         for (y = 0; y < DCTSIZE; y++) {
             q_lu = 1.0 / ((double) tbl->lu[ZIGZAG[i]] * \
-                    AAN_SCALE_FACTOR[x] * AAN_SCALE_FACTOR[y] * 8.0);
+                    AAN_SCALE_FACTOR[x] * AAN_SCALE_FACTOR[y] * 8.0);           //得到y分量的量化表每个值的倒数，加入了缩放因子AAN_SCALE_FACTOR
             q_ch = 1.0 / ((double) tbl->ch[ZIGZAG[i]] * \
-                    AAN_SCALE_FACTOR[x] * AAN_SCALE_FACTOR[y] * 8.0);
+                    AAN_SCALE_FACTOR[x] * AAN_SCALE_FACTOR[y] * 8.0);          //得到cr、cb分量的量化表每个值的倒数，加入了缩放因子AAN_SCALE_FACTOR
 
-            q_unit->y[i] = (INT16)(ycc_unit->y[i]*q_lu + 16384.5) - 16384;
-            q_unit->cb[i] = (INT16)(ycc_unit->cb[i]*q_ch + 16384.5) - 16384;
-            q_unit->cr[i] = (INT16)(ycc_unit->cr[i]*q_ch + 16384.5) - 16384;
+            q_unit->y[i] = (INT16)(ycc_unit->y[i]*q_lu + 16384.5) - 16384;      //对每个y值除以量化数值后，四舍五入
+            q_unit->cb[i] = (INT16)(ycc_unit->cb[i]*q_ch + 16384.5) - 16384;    //对每个cr值除以量化数值后，四舍五入
+            q_unit->cr[i] = (INT16)(ycc_unit->cr[i]*q_ch + 16384.5) - 16384;    //对每个cb值除以量化数值后，四舍五入
 
             i++;
         }
@@ -173,43 +177,44 @@ jpeg_compress(compress_io *cio,
     int zero_num;
     int mark;
 
-    /* zigzag encode */
+    /*进行z字形编码，存储到zigzag_data数组中 i.e. zigzag_data数组按照z字形存储了data中的数据*/
     for (i = 0; i < DCTSIZE2; i++)
         zigzag_data[ZIGZAG[i]] = data[i];
 
-    /* write DC */
+    /* 写入直流分量，直流系数利用差值编码*/
     diff = zigzag_data[0] - *dc;
     *dc = zigzag_data[0];
-
-    if (diff == 0)
+    
+    if (diff == 0)//如果与上一个block的直流分量一致，写入直流哈夫曼表中的0
         write_bits(cio, dc_htable[0]);
     else {
-        set_bits(&bits, diff);
-        write_bits(cio, dc_htable[bits.len]);
-        write_bits(cio, bits);
+        set_bits(&bits, diff);//如果与上一个block的直流分量不一样
+        write_bits(cio, dc_htable[bits.len]);//写入哈夫曼直流类号
+        write_bits(cio, bits); //写入哈夫曼直流数据号（负数则取反码）
     }
 
-    /* write AC */
-    int end = DCTSIZE2 - 1;
+    /* 写入交流分量，直流系数利用差值编码 */
+    int end = DCTSIZE2 - 1;   //终点
     while (zigzag_data[end] == 0 && end > 0)
-        end--;
+        end--;                //找到最后一个非0的交流分量
     for (i = 1; i <= end; i++) {
         j = i;
+        //如果找到了0
         while (zigzag_data[j] == 0 && j <= end)
             j++;
-        zero_num = j - i;
+        zero_num = j - i;     //当前值为0的交流分量个数
         for (mark = 0; mark < zero_num / 16; mark++)
-            write_bits(cio, ac_htable[0xF0]);
+            write_bits(cio, ac_htable[0xF0]);  //mark个（16个0），是第0xf0类
         zero_num = zero_num % 16;
-        set_bits(&bits, zigzag_data[j]);
-        write_bits(cio, ac_htable[zero_num * 16 + bits.len]);
-        write_bits(cio, bits);
+        set_bits(&bits, zigzag_data[j]);  //获取非0值zigzag_data[j]的长度、值
+        write_bits(cio, ac_htable[zero_num * 16 + bits.len]);//zero_num * 16：非0值前0的个数，bits.len非零值的类
+        write_bits(cio, bits);//写入非0值
         i = j;
     }
 
     /* write end of unit */
     if (end != DCTSIZE2 - 1)
-        write_bits(cio, ac_htable[0]);
+        write_bits(cio, ac_htable[0]);//如果unit最后一个不是非0值，则用EOB结束
 }
 
 
@@ -219,7 +224,7 @@ jpeg_compress(compress_io *cio,
 void
 jpeg_encode(compress_io *cio, bmp_info *binfo)
 {
-    /* init tables */
+    /*初始化ycrcb表、量化表、哈夫曼表*/
     UINT32 scale = 50;
     init_ycbcr_tables();
     init_quant_tables(scale);
@@ -240,17 +245,40 @@ jpeg_encode(compress_io *cio, bmp_info *binfo)
             dc_cr = 0;
     int x, y;
 
-    int offset = binfo->offset;
+    //通常来说bmp图像的存储都是倒过来的，因此我们需要将起始位置与结束位置调换
+    int in_size = in->end - in->set;
+    int offset = binfo->offset + (binfo->datasize/in_size - 1) * in_size;
+    //int offset = binfo->offset;
+
+
     fseek(in->fp, offset, SEEK_SET);
 
-    /******************************************************/
-    /********************代码补充部分***********************/
-    //1、RGB颜色空间转换至YCbCr色彩空间
-    //2、向前DCT离散余弦变化
-    //3、量化
-    //4、huffman压缩编码
+    /***************************代码补充部分*****************************/
+    for(i = 0 ; i < binfo->height ; i += 8){       //遍历bmp图像的高
 
-    /******************************************************/
+        //i+=8是因为一个DCTunit的大小是8X8
+        for(j = o ; j < binfo->width ; j += 8){    //遍历bmp图像的宽
+            
+            //1、RGB颜色空间转换至YCbCr色彩空间
+            rgb_to_ycbcr(in->set, ycc_unit, j, binfo->width);
+            
+            //2、对3个分量分别进行向前DCT离散余弦变化
+            jpeg_fdct(ycc_unit.y);
+            jpeg_fdct(ycc_unit.cb);
+            jpeg_fdct(ycc_unit.cr);     
+
+            //3、量化
+            jpeg_quant(ycc_unit, q_unit);
+
+            //4、对每个分量分别进行huffman压缩编码
+            jpeg_compress(cio, q_unit.y, &dc_y, h_tables.lu_dc, h_tables.lu_ac);
+            jpeg_compress(cio, q_unit.cb, &dc_cb, h_tables.ch_dc, h_tables.ch_ac);
+            jpeg_compress(cio, q_unit.cr, &dc_cr, h_tables.ch_dc, h_tables.ch_ac);
+        }
+    }
+
+    /*************************代码补充部分结束**************************/
+
     write_align_bits(cio);
 
     /* write file end */
