@@ -280,13 +280,13 @@ jpeg_encode(compress_io *cio, bmp_info *binfo)
     fseek(in->fp, offset, SEEK_SET);
 
     /***************************代码补充部分*****************************/
-    for(i = 0 ; i < binfo->height ; i += 8){       //遍历bmp图像的高
+    for(int i = 0 ; i < binfo->height ; i += 8){       //遍历bmp图像的高
 
         //i+=8是因为一个DCTunit的大小是8X8
-        for(j = o ; j < binfo->width ; j += 8){    //遍历bmp图像的宽
+        for(int j = 0 ; j < binfo->width ; j += 8){    //遍历bmp图像的宽
             
             //1、RGB颜色空间转换至YCbCr色彩空间
-            rgb_to_ycbcr(in->set, ycc_unit, j, binfo->width);
+            rgb_to_ycbcr(in->set, &ycc_unit, j, binfo->width);
             
             //2、对3个分量分别进行向前DCT离散余弦变化
             jpeg_fdct(ycc_unit.y);
@@ -294,7 +294,7 @@ jpeg_encode(compress_io *cio, bmp_info *binfo)
             jpeg_fdct(ycc_unit.cr);     
 
             //3、量化
-            jpeg_quant(ycc_unit, q_unit);
+            jpeg_quant(&ycc_unit, &q_unit);
 
             //4、对每个分量分别进行huffman压缩编码
             jpeg_compress(cio, q_unit.y, &dc_y, h_tables.lu_dc, h_tables.lu_ac);

@@ -7,7 +7,7 @@ all: $(OBJECTS)
 	$(CC) -o cjpeg $(OBJECTS)
 
 clean:
-	rm -f *.o cjpeg
+	del -f *.o cjpeg
 
 cio.o: cjpeg.h cio.h cio.c
 cmarker.o: cjpeg.h cmarker.c
