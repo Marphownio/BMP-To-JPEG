@@ -8,7 +8,7 @@ all: $(OBJECTS)
 
 clean:
 	del -f *.o cjpeg.exe cjpeg
-#	rm -f *.o cjpeg.exe cjpeg
+	rm -f *.o cjpeg.exe cjpeg
 
 cio.o: cjpeg.h cio.h cio.c
 cmarker.o: cjpeg.h cmarker.c
