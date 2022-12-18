@@ -282,6 +282,11 @@ jpeg_encode(compress_io *cio, bmp_info *binfo)
     /***************************代码补充部分*****************************/
     for(int i = 0 ; i < binfo->height ; i += 8){       //遍历bmp图像的高
 
+        /* flush input buffer 不然linux下就会运行错误*/
+        if (! (in->flush_buffer) (cio))
+            err_exit(BUFFER_READ_ERR);
+
+
         //i+=8是因为一个DCTunit的大小是8X8
         for(int j = 0 ; j < binfo->width ; j += 8){    //遍历bmp图像的宽
             
