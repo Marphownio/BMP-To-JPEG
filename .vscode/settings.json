@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "cio.h": "c",
-        "cjpeg.h": "c"
+        "cjpeg.h": "c",
+        "iostream": "cpp"
     }
 }
